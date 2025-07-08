@@ -19,6 +19,7 @@ app.use(
   })
 );
 
+// Eine einfache Test-Route
 app.get('/', (req, res) => {
     res.send('Willkommen bei der InkedView API!');
 });
@@ -35,8 +36,3 @@ mongoose.connect(process.env.MONGO_URI)
     .catch((err) => {
         console.error('Fehler bei der Datenbankverbindung:', err);
     });
-
-// Eine einfache Test-Route
-app.get('/', (req, res) => {
-    res.send('Willkommen bei der InkedView API!');
-});
