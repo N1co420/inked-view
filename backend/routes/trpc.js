@@ -4,6 +4,7 @@ const { initTRPC, TRPCError } = require('@trpc/server'); // TRPCError importiere
 const { z } = require('zod');
 const jwt = require('jsonwebtoken');
 const authService = require('../services/auth.service'); // Den neuen Service importieren
+const studioService = require('../services/studio.service');
 
 // 1. Kontext-Erstellung definieren
 // Diese Funktion wird für JEDE Anfrage ausgeführt.
@@ -96,6 +97,21 @@ const appRouter = t.router({
           message: 'Ein unerwarteter Fehler ist aufgetreten.',
         });
       }
+    }),
+
+    createStudio: protectedProcedure
+    .input(
+      z.object({
+        name: z.string().min(3, 'Der Name muss mindestens 3 Zeichen haben.'),
+        region: z.string().min(2, 'Die Region muss mindestens 2 Zeichen haben.'),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      // ctx.artist.id kommt von unserer isAuthed-Middleware
+      const ownerId = ctx.artist.id;
+      const newStudio = await studioService.createStudio(input, ownerId);
+      
+      return { success: true, studio: newStudio };
     }),
 
     getMe: protectedProcedure.query(({ ctx }) => {
