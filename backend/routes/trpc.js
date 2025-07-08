@@ -2,9 +2,40 @@
 
 const { initTRPC, TRPCError } = require('@trpc/server'); // TRPCError importieren
 const { z } = require('zod');
+const jwt = require('jsonwebtoken');
 const authService = require('../services/auth.service'); // Den neuen Service importieren
 
-const t = initTRPC.create();
+// 1. Kontext-Erstellung definieren
+// Diese Funktion wird für JEDE Anfrage ausgeführt.
+// Sie nimmt den Express-Request und gibt ein "Kontext"-Objekt zurück.
+const createContext = ({ req }) => {
+  const token = req.headers.authorization?.split(' ')[1]; // Bearer <token>
+  return { token };
+};
+
+const t = initTRPC.context().create();
+
+
+const isAuthed = t.middleware(async ({ ctx, next }) => {
+  if (!ctx.token) {
+    throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Kein Token vorhanden.' });
+  }
+
+  try {
+    const payload = jwt.verify(ctx.token, process.env.JWT_SECRET);
+    // Hänge die entschlüsselten Daten an den Kontext an für die nächste Funktion
+    return next({
+      ctx: {
+        ...ctx,
+        artist: payload, // z.B. { id: '...', name: '...' }
+      },
+    });
+  } catch (error) {
+    throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Ungültiger Token.' });
+  }
+});
+
+const protectedProcedure = t.procedure.use(isAuthed);
 
 const appRouter = t.router({
   registerArtist: t.procedure
@@ -66,6 +97,13 @@ const appRouter = t.router({
         });
       }
     }),
+
+    getMe: protectedProcedure.query(({ ctx }) => {
+    return {
+      message: `Willkommen zurück, ${ctx.artist.name}!`,
+      artistData: ctx.artist,
+    };
+  }),
 });
 
 module.exports.appRouter = appRouter;
