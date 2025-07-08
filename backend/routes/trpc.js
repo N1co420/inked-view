@@ -38,6 +38,34 @@ const appRouter = t.router({
         });
       }
     }),
+    
+    login: t.procedure
+    .input(
+      z.object({
+        email: z.string().email(),
+        password: z.string(),
+      })
+    )
+    .mutation(async ({ input }) => {
+      try {
+        const token = await authService.login(input);
+        return {
+          success: true,
+          token,
+        };
+      } catch (error) {
+        if (error.message === 'INVALID_CREDENTIALS') {
+          throw new TRPCError({
+            code: 'UNAUTHORIZED', // HTTP 401
+            message: 'E-Mail oder Passwort ist ungültig.',
+          });
+        }
+        throw new TRPCError({
+          code: 'INTERNAL_SERVER_ERROR',
+          message: 'Ein unerwarteter Fehler ist aufgetreten.',
+        });
+      }
+    }),
 });
 
 module.exports.appRouter = appRouter;

@@ -1,6 +1,7 @@
 // backend/services/auth.service.js
 
 const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
 const Artist = require('../models/Artist');
 
 /**
@@ -36,6 +37,45 @@ async function register(artistData) {
   return newArtist.save();
 }
 
+/**
+ * Authenticates an artist and returns a JWT.
+ * @param {object} loginData - The artist's login credentials.
+ * @param {string} loginData.email - The artist's email.
+ * @param {string} loginData.password - The artist's plaintext password.
+ * @returns {Promise<string>} The generated JSON Web Token.
+ * @throws {Error} If credentials are invalid.
+ */
+async function login(loginData) {
+  const { email, password } = loginData;
+
+  // 1. Find user by email
+  const artist = await Artist.findOne({ email });
+  if (!artist) {
+    // Do not specify whether the email or password was wrong for security.
+    throw new Error('INVALID_CREDENTIALS');
+  }
+
+  // 2. Compare password with the stored hash
+  const isMatch = await bcrypt.compare(password, artist.password);
+  if (!isMatch) {
+    throw new Error('INVALID_CREDENTIALS');
+  }
+
+  // 3. Create JWT Payload
+  const payload = {
+    id: artist._id,
+    name: artist.name,
+  };
+
+  // 4. Sign the token and return it
+  const token = jwt.sign(payload, process.env.JWT_SECRET, {
+    expiresIn: '1d', // Token is valid for 1 day
+  });
+
+  return token;
+}
+
 module.exports = {
   register,
+  login,
 };
